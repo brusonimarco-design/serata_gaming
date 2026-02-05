@@ -83,6 +83,10 @@ button:disabled {
   font-size:1.4em;
   margin-bottom:40px;
 }
+
+#music-controls {
+  margin: 20px;
+}
 </style>
 </head>
 
@@ -99,8 +103,13 @@ if (!sessionStorage.getItem("authenticated")) {
 }
 </script>
 
-
 <body>
+
+<!-- ===== Sottofondo musicale ===== -->
+<audio id="bg-music" src="musica.mp3" loop></audio>
+<div id="music-controls">
+  <button id="toggle-music">▶️ Play Musica</button>
+</div>
 
 <h1>🎮 SERATA GAMING 🎮</h1>
 <p style="font-size:2em">Ultimo weekend di Febbraio</p>
@@ -147,8 +156,10 @@ if (!sessionStorage.getItem("authenticated")) {
 
 <div id="vote-totals">✅ Si: 0 | ❌ No: 0</div>
 
-<script>
+<!-- ===== Pulsante per azzerare i voti ===== -->
+<button onclick="resetVotes()">🔄 Reset Voti</button>
 
+<script>
 const EVENT_ID = "gaming_ultimo_we_febbraio";
 
 const sheetURL =
@@ -199,7 +210,7 @@ function vote(name, choice) {
   window.open(voteLinks[name][choice], "_blank");
 }
 
-/* ===== CSV PARSER ROBUSTO ===== */
+/* ===== CSV PARSER ===== */
 function parseCSV(text) {
   return text.split("\n").slice(1).map(r =>
     r.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g)
@@ -248,10 +259,43 @@ function loadLocalVotes() {
   updateTotals();
 }
 
+// ===== Funzione per resettare i voti con password =====
+function resetVotes() {
+  const pwd = prompt("Inserisci la password di reset");
+  if (pwd === "reset123") { // cambia la password come vuoi
+    localStorage.removeItem(EVENT_ID + "_voted_STEVEN");
+    localStorage.removeItem(EVENT_ID + "_voted_ED-O");
+    localStorage.removeItem(EVENT_ID + "_voted_CONRAD");
+    localStorage.removeItem(EVENT_ID + "_voted_MARK");
+
+    document.querySelectorAll(".gamer-card").forEach(card => {
+      card.classList.remove("voted-yes", "voted-no");
+      card.querySelectorAll("button").forEach(b => b.disabled = false);
+    });
+
+    updateTotals();
+    alert("Voti azzerati!");
+  } else {
+    alert("Password errata!");
+  }
+}
+
+// ===== Funzione per Play/Pause Musica =====
+const music = document.getElementById("bg-music");
+const musicBtn = document.getElementById("toggle-music");
+musicBtn.addEventListener("click", () => {
+  if (music.paused) {
+    music.play();
+    musicBtn.innerText = "⏸️ Pausa Musica";
+  } else {
+    music.pause();
+    musicBtn.innerText = "▶️ Play Musica";
+  }
+});
+
 loadLocalVotes();
 loadVotes();
 setInterval(loadVotes, 5000);
-
 </script>
 
 </body>
