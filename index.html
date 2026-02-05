@@ -86,6 +86,20 @@ button:disabled {
 
 <body>
 
+<script>
+// PASSWORD DI ACCESSO AL SITO
+const SITE_PASSWORDS = ["cheeselamerda"]; // cambia con le tue password
+if (!sessionStorage.getItem("authenticated")) {
+  const pwd = prompt("Inserisci la password per accedere al sito");
+  if (SITE_PASSWORDS.includes(pwd)) {
+    sessionStorage.setItem("authenticated","yes");
+  } else {
+    alert("Password errata! Non puoi accedere.");
+    document.body.innerHTML="<h1>Accesso negato</h1>";
+  }
+}
+</script>
+
 <h1>🎮 SERATA GAMING 🎮</h1>
 <p style="font-size:2em">Ultimo weekend di Febbraio</p>
 
@@ -131,11 +145,11 @@ button:disabled {
 
 <div id="vote-totals">✅ Si: 0 | ❌ No: 0</div>
 
-<!-- Tasto Reset Voti -->
+<!-- Tasto Reset -->
 <button id="reset-button">🧹 Reset voti</button>
 
-<!-- Sottofondo musicale -->
-<audio autoplay loop>
+<!-- Musica (verrà avviata dopo il primo click) -->
+<audio id="bg-music" loop>
   <source src="musica.mp3" type="audio/mpeg">
   Il tuo browser non supporta l'audio.
 </audio>
@@ -143,108 +157,85 @@ button:disabled {
 <script>
 // CONFIG
 const EVENT_ID = "gaming_ultimo_we_febbraio";
-const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRwvtUgBOmxF-uMf_hL7KL3PwTEMXFisukdRjhbRqR0pOZBOQea0Xgy_dRdpFDQOFmRE8uetmbfUgpO/pub?output=csv";
-
 const passwords = {
   "STEVEN":"pass123",
   "ED-O":"edo456",
   "CONRAD":"corrad789",
   "MARK":"mark321"
 };
-
 const voteLinks = {
-  "STEVEN": { SI:"https://docs.google.com/forms/d/e/1FAIpQLSd-xFPzzA0_D3byiTuvkPi82IAzyVBrY3fQiNGkfvXrZU0VNw/viewform?usp=pp_url&entry.958723597=STEVEN&entry.86624913=SI", NO:"https://docs.google.com/forms/d/e/1FAIpQLSd-xFPzzA0_D3byiTuvkPi82IAzyVBrY3fQiNGkfvXrZU0VNw/viewform?usp=pp_url&entry.958723597=STEVEN&entry.86624913=NO" },
-  "ED-O": { SI:"https://docs.google.com/forms/d/e/1FAIpQLSd-xFPzzA0_D3byiTuvkPi82IAzyVBrY3fQiNGkfvXrZU0VNw/viewform?usp=pp_url&entry.958723597=ED-O&entry.86624913=SI", NO:"https://docs.google.com/forms/d/e/1FAIpQLSd-xFPzzA0_D3byiTuvkPi82IAzyVBrY3fQiNGkfvXrZU0VNw/viewform?usp=pp_url&entry.958723597=ED-O&entry.86624913=NO" },
-  "CONRAD": { SI:"https://docs.google.com/forms/d/e/1FAIpQLSd-xFPzzA0_D3byiTuvkPi82IAzyVBrY3fQiNGkfvXrZU0VNw/viewform?usp=pp_url&entry.958723597=CONRAD&entry.86624913=SI", NO:"https://docs.google.com/forms/d/e/1FAIpQLSd-xFPzzA0_D3byiTuvkPi82IAzyVBrY3fQiNGkfvXrZU0VNw/viewform?usp=pp_url&entry.958723597=CONRAD&entry.86624913=NO" },
-  "MARK": { SI:"https://docs.google.com/forms/d/e/1FAIpQLSd-xFPzzA0_D3byiTuvkPi82IAzyVBrY3fQiNGkfvXrZU0VNw/viewform?usp=pp_url&entry.958723597=MARK&entry.86624913=SI", NO:"https://docs.google.com/forms/d/e/1FAIpQLSd-xFPzzA0_D3byiTuvkPi82IAzyVBrY3fQiNGkfvXrZU0VNw/viewform?usp=pp_url&entry.958723597=MARK&entry.86624913=NO" }
+  "STEVEN": { SI:"#", NO:"#"},
+  "ED-O": { SI:"#", NO:"#"},
+  "CONRAD": { SI:"#", NO:"#"},
+  "MARK": { SI:"#", NO:"#"}
 };
 
-// ===== FUNZIONI =====
+// FUNZIONI
 function updateTotals() {
-  let yes = 0, no = 0;
-  document.querySelectorAll(".gamer-card").forEach(card => {
-    if (card.classList.contains("voted-yes")) yes++;
-    if (card.classList.contains("voted-no")) no++;
+  let yes=0,no=0;
+  document.querySelectorAll(".gamer-card").forEach(card=>{
+    if(card.classList.contains("voted-yes")) yes++;
+    if(card.classList.contains("voted-no")) no++;
   });
-  document.getElementById("vote-totals").innerText = `✅ Si: ${yes} | ❌ No: ${no}`;
+  document.getElementById("vote-totals").innerText=`✅ Si: ${yes} | ❌ No: ${no}`;
 }
 
-function vote(name, choice) {
-  if (localStorage.getItem(EVENT_ID + "_voted_" + name)) {
+function vote(name,choice){
+  if(localStorage.getItem(EVENT_ID+"_voted_"+name)){
     alert("Hai già votato!");
     return;
   }
   const pwd = prompt(`Password di ${name}`);
-  if (pwd !== passwords[name]) {
+  if(pwd!==passwords[name]){
     alert("Password errata");
     return;
   }
-  localStorage.setItem(EVENT_ID + "_voted_" + name, choice);
-  const card = document.querySelector(`.gamer-card[data-name="${name}"]`);
-  card.classList.add(choice === "SI" ? "voted-yes" : "voted-no");
-  card.querySelectorAll("button").forEach(b => b.disabled = true);
-  updateTotals();
-  window.open(voteLinks[name][choice], "_blank");
-}
-
-/* CSV Parser */
-function parseCSV(text) {
-  return text.split("\n").slice(1).map(r =>
-    r.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g)?.map(x => x.replace(/"/g,""))
-  ).filter(Boolean);
-}
-
-async function loadVotes() {
-  const res = await fetch(sheetURL);
-  const csv = await res.text();
-  const rows = parseCSV(csv);
-  const counted = {};
-  rows.forEach(c => {
-    const name = c[1], vote = c[2];
-    if (!name || counted[name]) return;
-    counted[name] = true;
-    const card = document.querySelector(`.gamer-card[data-name="${name}"]`);
-    if (!card) return;
-    card.querySelectorAll("button").forEach(b => b.disabled = true);
-    if (vote === "SI") card.classList.add("voted-yes");
-    else card.classList.add("voted-no");
-  });
+  localStorage.setItem(EVENT_ID+"_voted_"+name,choice);
+  const card=document.querySelector(`.gamer-card[data-name="${name}"]`);
+  card.classList.add(choice==="SI"?"voted-yes":"voted-no");
+  card.querySelectorAll("button").forEach(b=>b.disabled=true);
   updateTotals();
 }
 
-// Carica voti da localStorage
-function loadLocalVotes() {
-  document.querySelectorAll(".gamer-card").forEach(card => {
-    const name = card.dataset.name;
-    const choice = localStorage.getItem(EVENT_ID + "_voted_" + name);
-    if (choice) {
-      card.classList.add(choice === "SI" ? "voted-yes" : "voted-no");
-      card.querySelectorAll("button").forEach(b => b.disabled = true);
+// CARICA VOTI LOCALSTORAGE
+function loadLocalVotes(){
+  document.querySelectorAll(".gamer-card").forEach(card=>{
+    const name=card.dataset.name;
+    const choice=localStorage.getItem(EVENT_ID+"_voted_"+name);
+    if(choice){
+      card.classList.add(choice==="SI"?"voted-yes":"voted-no");
+      card.querySelectorAll("button").forEach(b=>b.disabled=true);
     }
   });
   updateTotals();
 }
 
-// ===== RESET VOTI =====
-document.getElementById("reset-button").addEventListener("click", function() {
-  const pwd = prompt("Inserisci la password per resettare i voti");
-  if (pwd === "reset123") {  // cambia con la tua password
-    Object.keys(localStorage).forEach(key => {
-      if (key.startsWith(EVENT_ID + "_voted_")) localStorage.removeItem(key);
+// RESET VOTI
+document.getElementById("reset-button").addEventListener("click",function(){
+  const pwd=prompt("Password per resettare i voti");
+  if(pwd==="reset123"){ // cambia con la tua password
+    Object.keys(localStorage).forEach(key=>{
+      if(key.startsWith(EVENT_ID+"_voted_")) localStorage.removeItem(key);
     });
-    document.querySelectorAll(".gamer-card").forEach(card => {
+    document.querySelectorAll(".gamer-card").forEach(card=>{
       card.classList.remove("voted-yes","voted-no");
-      card.querySelectorAll("button").forEach(b => b.disabled = false);
+      card.querySelectorAll("button").forEach(b=>b.disabled=false);
     });
     updateTotals();
     alert("Voti resettati!");
-  } else alert("Password errata!");
+  }else alert("Password errata!");
 });
 
-// ===== CARICAMENTO INIZIALE =====
+// AVVIA MUSICA DOPO IL PRIMO CLICK
+let musicStarted = false;
+document.body.addEventListener("click", function(){
+  if(!musicStarted){
+    document.getElementById("bg-music").play().catch(()=>{});
+    musicStarted=true;
+  }
+}, {once:true});
+
 loadLocalVotes();
-loadVotes();
-setInterval(loadVotes, 5000);
 </script>
 
 </body>
